@@ -1,0 +1,2725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pokémon Draft Battle</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    background: linear-gradient(135deg, #101827, #263b59);
+    color: white;
+}
+
+/* =========================================================
+   RETRO GAME BUTTONS
+========================================================= */
+
+button {
+    border: 2px solid #141923;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-family: monospace;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 13px;
+    letter-spacing: 0.4px;
+    box-shadow:
+        inset 0 2px 0 rgba(255,255,255,.35),
+        inset 0 -3px 0 rgba(0,0,0,.22),
+        0 3px 0 rgba(0,0,0,.45);
+    transition: transform .12s ease, filter .15s ease, box-shadow .12s ease;
+}
+
+button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    filter: brightness(1.05);
+}
+
+button:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow:
+        inset 0 2px 0 rgba(255,255,255,.25),
+        inset 0 -1px 0 rgba(0,0,0,.2),
+        0 1px 0 rgba(0,0,0,.45);
+}
+
+button:disabled {
+    opacity: .42;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.bid-button {
+    background: linear-gradient(to bottom, #ffe066, #fab005);
+    color: #161922;
+}
+
+.pass-button {
+    background: linear-gradient(to bottom, #ff7878, #e03131);
+    color: #fff;
+}
+
+.start-button {
+    background: linear-gradient(to bottom, #69db7c, #2f9e44);
+    color: #0f172a;
+}
+
+.reset-button {
+    margin-top: 14px;
+    background: linear-gradient(to bottom, #74c0fc, #228be6);
+    color: #0b1320;
+}
+
+/* =========================================================
+   NAME SETUP MODAL
+========================================================= */
+
+.name-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 13, 24, .92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 30;
+    padding: 15px;
+}
+
+.name-overlay.hidden {
+    display: none;
+}
+
+.name-modal {
+    width: min(92%, 440px);
+    background: #1d293b;
+    border: 3px solid #111622;
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    box-shadow:
+        inset 0 0 0 2px rgba(255,255,255,.14),
+        0 12px 30px rgba(0,0,0,.6);
+}
+
+.name-modal h2 {
+    margin: 0 0 6px;
+    font-family: monospace;
+    font-size: 22px;
+}
+
+.name-modal p {
+    margin: 0 0 16px;
+    font-size: 12px;
+    opacity: .78;
+}
+
+.name-inputs {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.name-field {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    font-family: monospace;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.name-field input {
+    width: 100%;
+    padding: 9px 11px;
+    border-radius: 8px;
+    border: 2px solid #0f172a;
+    background: #0f172a;
+    color: white;
+    text-align: left;
+    font-family: monospace;
+    font-size: 14px;
+}
+
+.start-button {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 14px;
+}
+
+/* =========================================================
+   MAIN GAME LAYOUT
+========================================================= */
+
+.game {
+    width: min(1200px, 100%);
+    height: 100vh;
+    height: 100dvh;
+    margin: auto;
+    padding: 8px;
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    gap: 8px;
+    overflow: hidden;
+}
+
+header {
+    text-align: center;
+    flex-shrink: 0;
+}
+
+header h1 {
+    margin: 0;
+    font-family: monospace;
+    font-size: clamp(22px, 3vw, 34px);
+}
+
+header p {
+    margin: 2px 0 0;
+    opacity: .72;
+    font-size: 12px;
+}
+
+/* =========================================================
+   PLAYERS
+========================================================= */
+
+.players {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.player {
+    background: rgba(255,255,255,.09);
+    border: 2px solid rgba(255,255,255,.14);
+    border-radius: 12px;
+    padding: 6px;
+    text-align: center;
+    transition: .2s;
+}
+
+.player.active {
+    border-color: #ffd43b;
+    box-shadow: 0 0 15px rgba(255,212,59,.32);
+}
+
+.player h2 {
+    margin: 0;
+    font-family: monospace;
+    font-size: 17px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.coins {
+    font-size: 19px;
+    font-weight: bold;
+}
+
+.team-count {
+    font-size: 11px;
+    opacity: .75;
+}
+
+/* =========================================================
+   MAIN STAGE
+========================================================= */
+
+.main-stage {
+    position: relative;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* =========================================================
+   AUCTION — PROFESSOR OAK'S LAB BACKDROP
+========================================================= */
+
+.auction {
+    position: absolute;
+    inset: 0;
+    min-height: 0;
+    border-radius: 16px;
+    border: 4px solid #141923;
+    padding: 12px;
+    text-align: center;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+
+    overflow: hidden;
+    background: #1a2436;
+    box-shadow:
+        inset 0 0 0 2px rgba(255,255,255,.35),
+        0 5px 15px rgba(0,0,0,.5);
+}
+
+.stage-bg-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    image-rendering: pixelated;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.auction-scrim {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        to bottom,
+        rgba(10, 15, 26, .28),
+        rgba(10, 15, 26, .48)
+    );
+    z-index: 1;
+    pointer-events: none;
+}
+
+.auction > :not(.stage-bg-img):not(.auction-scrim) {
+    position: relative;
+    z-index: 2;
+}
+
+.round {
+    position: absolute;
+    top: 8px;
+    left: 12px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(15, 23, 42, .84);
+    border: 1px solid rgba(255,255,255,.25);
+    font-family: monospace;
+    font-size: 12px;
+    z-index: 3;
+}
+
+.timer {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(15, 23, 42, .84);
+    border: 1px solid rgba(255,255,255,.25);
+    font-family: monospace;
+    font-size: 12px;
+    z-index: 3;
+}
+
+.turn {
+    font-family: monospace;
+    font-size: 17px;
+    font-weight: bold;
+    margin-bottom: 2px;
+    padding: 2px 10px;
+    border-radius: 6px;
+    background: rgba(15, 23, 42, .74);
+    text-shadow: 0 2px 4px rgba(0,0,0,.85);
+}
+
+#pokemonArea {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.pokemon-img {
+    width: min(195px, 25vh);
+    height: min(195px, 25vh);
+    object-fit: contain;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 6px 8px rgba(0,0,0,.65));
+}
+
+.pokemon-name {
+    font-family: monospace;
+    font-size: clamp(19px, 2.8vw, 28px);
+    font-weight: bold;
+    margin: 2px 0 4px;
+    padding: 1px 10px;
+    border-radius: 6px;
+    background: rgba(15, 23, 42, .74);
+    text-shadow: 0 2px 5px rgba(0,0,0,.85);
+}
+
+.blind {
+    width: min(195px, 25vh);
+    height: min(195px, 25vh);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, .78);
+    border: 2px solid rgba(255,255,255,.32);
+    border-radius: 18px;
+    font-size: clamp(52px, 9.5vh, 80px);
+}
+
+.bid-info {
+    font-family: monospace;
+    font-size: 13px;
+    margin: 1px 0;
+    padding: 2px 10px;
+    border-radius: 6px;
+    background: rgba(15, 23, 42, .76);
+}
+
+.bid-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+input {
+    width: 145px;
+    padding: 8px;
+    border: 2px solid #141923;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: #0f172a;
+    text-align: center;
+    font-family: monospace;
+    font-size: 15px;
+    font-weight: bold;
+    outline: none;
+}
+
+.message {
+    min-height: 20px;
+    margin-top: 4px;
+    padding: 2px 10px;
+    border-radius: 6px;
+    background: rgba(15, 23, 42, .76);
+    font-family: monospace;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+/* =========================================================
+   TEAMS & KNOCKED OUT RED HIGHLIGHTING
+========================================================= */
+
+.teams {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    min-height: 0;
+}
+
+.team {
+    background: rgba(255,255,255,.07);
+    border-radius: 11px;
+    padding: 5px;
+    min-width: 0;
+}
+
+.team h3 {
+    margin: 0 0 2px;
+    text-align: center;
+    font-family: monospace;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pokemon-list {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+}
+
+.team-pokemon {
+    width: 66px;
+    text-align: center;
+    background: rgba(0,0,0,.25);
+    border: 1.5px solid rgba(255,255,255,.12);
+    border-radius: 7px;
+    padding: 2px;
+    transition: background .2s, border-color .2s, transform .2s;
+}
+
+.team-pokemon img {
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+    image-rendering: pixelated;
+}
+
+.team-pokemon div {
+    font-size: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.team-pokemon.knocked-out {
+    background: rgba(224, 49, 49, .38);
+    border-color: #ff6b6b;
+    box-shadow: inset 0 0 8px rgba(255, 82, 82, .5), 0 0 8px rgba(224, 49, 49, .4);
+}
+
+.team-pokemon.knocked-out img {
+    filter: grayscale(80%) brightness(75%) drop-shadow(0 0 4px rgba(255, 77, 77, .7));
+    opacity: .78;
+}
+
+.team-pokemon.knocked-out div {
+    color: #ffa8a8;
+    font-weight: bold;
+    text-decoration: line-through;
+}
+
+/* =========================================================
+   BATTLE ARENA + DEFAULT BATTLE POSITIONS
+========================================================= */
+
+.battle {
+    display: none;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+
+    border-radius: 16px;
+    border: 4px solid #111;
+    background: #1b2838;
+
+    box-shadow:
+        inset 0 0 0 2px white,
+        0 5px 15px rgba(0,0,0,.5);
+}
+
+.battle-bg-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    image-rendering: pixelated;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.battle-title {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 8;
+    padding: 4px 11px;
+    border-radius: 7px;
+    background: rgba(0,0,0,.78);
+    border: 2px solid rgba(255,255,255,.65);
+    font-family: monospace;
+    font-size: 12px;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.battle-field {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    overflow: hidden;
+}
+
+/* Default battle positions: Player 1 lower-left, Player 2 upper-right */
+.battle-side {
+    position: absolute;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: clamp(8px, 1.5vw, 18px);
+}
+
+.battle-side:not(.player-two) {
+    left: 4%;
+    bottom: 24%;
+}
+
+.battle-side.player-two {
+    right: 4%;
+    top: 10%;
+    flex-direction: row-reverse;
+}
+
+.battle-sprite {
+    width: clamp(104px, 17vh, 172px);
+    height: clamp(104px, 17vh, 172px);
+    flex-shrink: 0;
+    object-fit: contain;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 5px 3px rgba(0,0,0,.48));
+    transition: transform .2s, filter .2s;
+}
+
+/* =========================================================
+   HP INFORMATION
+========================================================= */
+
+.battle-info {
+    width: clamp(145px, 21vw, 220px);
+    background: rgba(247, 247, 247, .95);
+    color: #111;
+    border: 3px solid #222;
+    border-radius: 9px;
+    padding: 7px 10px;
+    box-shadow: 3px 4px 0 rgba(0,0,0,.38);
+}
+
+.battle-name {
+    font-family: monospace;
+    font-size: clamp(13px, 1.7vw, 18px);
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.battle-type {
+    font-size: 8px;
+    margin-bottom: 5px;
+}
+
+.hp-bar {
+    width: 100%;
+    height: 12px;
+    background: #444;
+    border: 2px solid #222;
+    border-radius: 7px;
+    overflow: hidden;
+}
+
+.hp-fill {
+    height: 100%;
+    width: 100%;
+    background: #55b84a;
+    transition: width .5s ease, background .3s;
+}
+
+.hp-text {
+    font-family: monospace;
+    font-size: 9px;
+    margin-top: 3px;
+    text-align: right;
+}
+
+/* =========================================================
+   BATTLE CONTROL AREA
+========================================================= */
+
+.battle-center {
+    position: absolute;
+    left: 4%;
+    right: 4%;
+    bottom: 2%;
+    z-index: 7;
+    display: grid;
+    grid-template-columns: minmax(180px, .8fr) minmax(0, 1.7fr);
+    gap: 7px;
+    align-items: stretch;
+}
+
+.battle-message {
+    min-height: 74px;
+    display: flex;
+    align-items: center;
+    background: #fff;
+    color: #111;
+    border: 4px solid #222;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-family: monospace;
+    font-size: clamp(10px, 1.2vw, 13px);
+    line-height: 1.35;
+    box-shadow: 3px 3px 0 rgba(0,0,0,.4);
+}
+
+.battle-controls {
+    min-height: 74px;
+    background: #f1f1f1;
+    border: 4px solid #222;
+    border-radius: 10px;
+    padding: 6px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+}
+
+.move-button,
+.switch-button {
+    min-width: 0;
+    min-height: 0;
+    padding: 5px;
+    border: 2px solid #141923;
+    border-radius: 7px;
+    font-family: monospace;
+    font-size: 10px;
+    font-weight: bold;
+    box-shadow:
+        inset 0 2px 0 rgba(255,255,255,.35),
+        inset 0 -3px 0 rgba(0,0,0,.2),
+        0 2px 0 rgba(0,0,0,.35);
+    transition: transform .12s ease, filter .15s ease;
+}
+
+.switch-button {
+    background: linear-gradient(to bottom, #e9ecef, #ced4da);
+    color: #111;
+}
+
+.move-button:hover,
+.switch-button:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.04);
+}
+
+.move-button:active,
+.switch-button:active {
+    transform: translateY(1px);
+}
+
+.move-button small {
+    font-size: 7px;
+}
+
+/* =========================================================
+   TYPE BUTTONS
+========================================================= */
+
+.type-fire { background: #ff922b; color: #111; }
+.type-water { background: #339af0; color: #111; }
+.type-grass { background: #51cf66; color: #111; }
+.type-electric { background: #fcc419; color: #111; }
+.type-normal { background: #adb5bd; color: #111; }
+.type-fighting { background: #e03131; color: #fff; }
+.type-psychic { background: #e64980; color: #fff; }
+.type-rock { background: #795548; color: #fff; }
+.type-ground { background: #d4a017; color: #111; }
+.type-ghost { background: #845ef7; color: #fff; }
+.type-poison { background: #ae3ec9; color: #fff; }
+.type-bug { background: #82c91e; color: #111; }
+.type-flying { background: #91a7ff; color: #111; }
+.type-ice { background: #66d9e8; color: #111; }
+.type-dragon { background: #5f3dc4; color: #fff; }
+.type-fairy { background: #f783ac; color: #111; }
+.type-dark { background: #343a40; color: #fff; }
+.type-steel { background: #868e96; color: #111; }
+
+.type-button {
+    border-radius: 5px;
+    padding: 3px 6px;
+    font-size: 8px;
+    font-weight: bold;
+    display: inline-block;
+}
+
+/* =========================================================
+   CHOICE OVERLAY
+========================================================= */
+
+.choice-box {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.7);
+    z-index: 10;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+}
+
+.choice-content {
+    width: min(92%, 540px);
+    max-height: 90%;
+    overflow-y: auto;
+    background: #f4f4f4;
+    color: #111;
+    border: 5px solid #222;
+    border-radius: 12px;
+    padding: 14px;
+    box-shadow: 5px 6px 0 rgba(0,0,0,.5);
+    text-align: center;
+}
+
+.choice-content h2 {
+    margin: 0 0 9px;
+    font-family: monospace;
+    font-size: 17px;
+}
+
+.choice-pokemon {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.choice-card {
+    background: white;
+    border: 2px solid #333;
+    border-radius: 8px;
+    padding: 5px;
+    width: 95px;
+    font-family: monospace;
+    font-size: 10px;
+}
+
+.choice-card.knocked-out {
+    background: #ffe3e3;
+    border-color: #e03131;
+    color: #b02a37;
+    box-shadow: inset 0 0 0 1px rgba(224, 49, 49, .35);
+}
+
+.choice-card.knocked-out img {
+    filter: grayscale(80%) brightness(82%);
+    opacity: .75;
+}
+
+.ko-badge {
+    margin-top: 4px;
+    padding: 4px;
+    border-radius: 6px;
+    background: #e03131;
+    color: #fff;
+    font-size: 9px;
+    font-weight: bold;
+    letter-spacing: 0.4px;
+}
+
+.choice-card img {
+    width: 65px;
+    height: 65px;
+    object-fit: contain;
+    image-rendering: pixelated;
+}
+
+.choice-card button {
+    width: 100%;
+    margin-top: 4px;
+    padding: 5px;
+    background: linear-gradient(to bottom, #ffe066, #fab005);
+    color: #111;
+    border: 2px solid #141923;
+    font-size: 9px;
+}
+
+/* =========================================================
+   RESULT
+========================================================= */
+
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.88);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    padding: 15px;
+}
+
+.result {
+    width: min(90%, 700px);
+    max-height: 90vh;
+    overflow-y: auto;
+    background: #202b3c;
+    border: 3px solid #111622;
+    border-radius: 18px;
+    padding: 20px;
+    text-align: center;
+}
+
+.result h1 {
+    margin-top: 0;
+    font-family: monospace;
+}
+
+.winner {
+    color: #ffd43b;
+    font-family: monospace;
+    font-size: 25px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.result-teams {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.result-team {
+    background: rgba(255,255,255,.07);
+    border-radius: 11px;
+    padding: 8px;
+}
+
+.result-team img {
+    width: 55px;
+    height: 55px;
+    image-rendering: pixelated;
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 700px) {
+    .game { padding: 5px; gap: 5px; }
+    header h1 { font-size: 21px; }
+    header p { font-size: 9px; }
+    .player { padding: 4px; border-radius: 9px; }
+    .player h2 { font-size: 13px; }
+    .coins { font-size: 15px; }
+    .team-count { font-size: 9px; }
+    .auction { padding: 7px; }
+    .round, .timer { font-size: 10px; top: 6px; }
+    .round { left: 8px; }
+    .timer { right: 8px; }
+    .turn { font-size: 14px; }
+    .pokemon-img, .blind { width: min(130px, 21vh); height: min(130px, 21vh); }
+    .pokemon-name { font-size: 19px; }
+    .bid-info { font-size: 11px; }
+    .bid-box { flex-wrap: wrap; justify-content: center; }
+    input { width: 120px; padding: 7px; font-size: 13px; }
+    button { padding: 7px 10px; font-size: 11px; }
+    .message { font-size: 10px; }
+    .team h3 { font-size: 10px; }
+    .team-pokemon { width: 54px; }
+    .team-pokemon img { width: 35px; height: 35px; }
+    .team-pokemon div { font-size: 7px; }
+
+    .battle-title { top: 4px; font-size: 8px; padding: 3px 6px; }
+    .battle-side { gap: 4px; }
+    .battle-side:not(.player-two) { left: 2%; bottom: 29%; }
+    .battle-side.player-two { right: 2%; top: 8%; }
+    .battle-sprite { width: clamp(64px, 17vw, 98px); height: clamp(64px, 17vw, 98px); }
+    .battle-info { width: clamp(86px, 23vw, 120px); padding: 4px 5px; border-width: 2px; }
+    .battle-name { font-size: 9px; }
+    .battle-type { font-size: 6px; margin-bottom: 3px; }
+    .hp-bar { height: 8px; }
+    .hp-text { font-size: 6px; }
+
+    .battle-center {
+        left: 2%; right: 2%; bottom: 1%;
+        display: grid; grid-template-columns: 1fr; gap: 3px;
+    }
+    .battle-message { min-height: 30px; padding: 4px 7px; border-width: 2px; font-size: 8px; }
+    .battle-controls { min-height: 0; border-width: 2px; padding: 3px; grid-template-columns: repeat(3, 1fr); gap: 3px; }
+    .move-button, .switch-button { min-height: 27px; padding: 2px; font-size: 7px; border-width: 1px; }
+    .move-button small { font-size: 5px; }
+
+    .choice-content { border-width: 3px; padding: 10px; }
+    .choice-content h2 { font-size: 14px; }
+    .choice-card { width: 78px; padding: 4px; font-size: 8px; }
+    .choice-card img { width: 50px; height: 50px; }
+    .choice-card button { padding: 4px; font-size: 8px; }
+}
+
+@media (max-height: 650px) and (min-width: 701px) {
+    .game { gap: 5px; padding: 5px; }
+    header h1 { font-size: 23px; }
+    header p { display: none; }
+    .players { gap: 5px; }
+    .player { padding: 4px; }
+    .pokemon-img, .blind { width: 120px; height: 120px; }
+    .battle-side:not(.player-two) { bottom: 26%; }
+    .battle-side.player-two { top: 8%; }
+    .battle-sprite { width: 104px; height: 104px; }
+    .battle-center { bottom: 1%; }
+}
+</style>
+</head>
+
+<body>
+
+<!-- ================= PLAYER NAMES MODAL ================= -->
+
+<div class="name-overlay" id="nameOverlay">
+    <div class="name-modal">
+        <h2>⚡ Enter Trainer Names ⚡</h2>
+        <p>Customize both players before entering Professor Oak's draft</p>
+        <div class="name-inputs">
+            <label class="name-field">
+                🔴 Player 1 Name
+                <input
+                    id="player1NameInput"
+                    type="text"
+                    maxlength="18"
+                    placeholder="Player 1"
+                >
+            </label>
+            <label class="name-field">
+                🔵 Player 2 Name
+                <input
+                    id="player2NameInput"
+                    type="text"
+                    maxlength="18"
+                    placeholder="Player 2"
+                >
+            </label>
+        </div>
+        <button class="start-button" id="startDraftButton" type="button" onclick="confirmPlayerNames()">
+            ▶ Start Draft
+        </button>
+    </div>
+</div>
+
+<div class="game">
+
+<header>
+    <h1>⚡ Pokémon Draft Battle ⚡</h1>
+    <p>151 Kanto Pokémon • 20 PokéCoins • Build your team</p>
+</header>
+
+<!-- ================= PLAYERS ================= -->
+
+<div class="players">
+
+    <div class="player" id="player1Card">
+        <h2 id="player1Label">🔴 Player 1</h2>
+
+        <div class="coins">
+            🪙 <span id="player1Coins">20</span>
+        </div>
+
+        <div class="team-count">
+            Pokémon:
+            <span id="player1Count">0</span>/3
+        </div>
+    </div>
+
+    <div class="player" id="player2Card">
+        <h2 id="player2Label">🔵 Player 2</h2>
+
+        <div class="coins">
+            🪙 <span id="player2Coins">20</span>
+        </div>
+
+        <div class="team-count">
+            Pokémon:
+            <span id="player2Count">0</span>/3
+        </div>
+    </div>
+
+</div>
+
+<!-- ================= MAIN STAGE ================= -->
+
+<div class="main-stage">
+
+<!-- ================= AUCTION ================= -->
+
+<div class="auction" id="auctionArea">
+
+    <img
+        class="stage-bg-img"
+        id="oakLabBgImg"
+        src="./Gemini_Generated_Image_gbumz0gbumz0gbum.png"
+        alt="Professor Oak's Lab"
+        onerror="handleBgError(this, ['Gemini_Generated_Image_gbumz0gbumz0gbum.png', 'Gemini_Generated_Image_gbumz0gbumz0gbum.jpg'])"
+    >
+    <div class="auction-scrim"></div>
+
+    <div class="round">
+        Round <span id="round">1</span>/6
+    </div>
+
+    <div class="timer">
+        ⏱️ <span id="timer">60</span>s
+    </div>
+
+    <div class="turn" id="turn">
+        Starting...
+    </div>
+
+    <div id="pokemonArea"></div>
+
+    <div class="bid-info">
+        Current bid:
+        🪙 <strong id="currentBid">0</strong>
+    </div>
+
+    <div class="bid-info">
+        Highest bidder:
+        <strong id="highestBidder">Nobody</strong>
+    </div>
+
+    <div class="bid-box">
+
+        <input
+            id="bidInput"
+            type="number"
+            min="1"
+            placeholder="Enter bid"
+        >
+
+        <button
+            class="bid-button"
+            id="bidButton"
+            type="button"
+            onclick="submitBid()"
+        >
+            🔨 Bid
+        </button>
+
+        <button
+            class="pass-button"
+            id="passButton"
+            type="button"
+            onclick="passTurn()"
+        >
+            ⏭️ Pass
+        </button>
+
+    </div>
+
+    <div class="message" id="message"></div>
+
+</div>
+
+<!-- ================= BATTLE ================= -->
+
+<div class="battle" id="battleArea">
+
+    <img
+        class="battle-bg-img"
+        id="battleBgImg"
+        src="./Gemini_Generated_Image_2sfepe2sfepe2sfe.png"
+        alt="Battle Arena"
+    >
+
+    <div class="battle-title" id="battleTitle">
+        ⚔️ WILD BATTLE
+    </div>
+
+    <div class="battle-field">
+
+        <!-- PLAYER 2 (UPPER RIGHT) -->
+
+        <div class="battle-side player-two">
+
+            <img
+                id="battleSprite2"
+                class="battle-sprite"
+                src=""
+                alt=""
+            >
+
+            <div class="battle-info">
+
+                <div
+                    class="battle-name"
+                    id="battleName2"
+                >
+                    Player 2
+                </div>
+
+                <div
+                    class="battle-type"
+                    id="battleType2"
+                ></div>
+
+                <div class="hp-bar">
+                    <div
+                        class="hp-fill"
+                        id="hpFill2"
+                    ></div>
+                </div>
+
+                <div
+                    class="hp-text"
+                    id="hpText2"
+                ></div>
+
+            </div>
+
+        </div>
+
+        <!-- BATTLE CONTROLS -->
+
+        <div class="battle-center">
+
+            <div
+                class="battle-message"
+                id="battleMessage"
+            >
+                Choose your Pokémon!
+            </div>
+
+            <div
+                class="battle-controls"
+                id="battleControls"
+            ></div>
+
+        </div>
+
+        <!-- PLAYER 1 (LOWER LEFT) -->
+
+        <div class="battle-side">
+
+            <img
+                id="battleSprite1"
+                class="battle-sprite"
+                src=""
+                alt=""
+            >
+
+            <div class="battle-info">
+
+                <div
+                    class="battle-name"
+                    id="battleName1"
+                >
+                    Player 1
+                </div>
+
+                <div
+                    class="battle-type"
+                    id="battleType1"
+                ></div>
+
+                <div class="hp-bar">
+
+                    <div
+                        class="hp-fill"
+                        id="hpFill1"
+                    ></div>
+
+                </div>
+
+                <div
+                    class="hp-text"
+                    id="hpText1"
+                ></div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- POKÉMON CHOICE -->
+
+    <div
+        class="choice-box"
+        id="choiceBox"
+    >
+
+        <div class="choice-content">
+
+            <h2 id="choiceTitle">
+                Choose Pokémon
+            </h2>
+
+            <div
+                class="choice-pokemon"
+                id="choicePokemon"
+            ></div>
+
+        </div>
+
+    </div>
+
+</div>
+
+</div>
+
+<!-- ================= TEAMS ================= -->
+
+<div class="teams">
+
+    <div class="team">
+
+        <h3 id="player1TeamTitle">🔴 Player 1 Team</h3>
+
+        <div
+            class="pokemon-list"
+            id="player1Team"
+        ></div>
+
+    </div>
+
+    <div class="team">
+
+        <h3 id="player2TeamTitle">🔵 Player 2 Team</h3>
+
+        <div
+            class="pokemon-list"
+            id="player2Team"
+        ></div>
+
+    </div>
+
+</div>
+
+</div>
+
+<!-- ================= RESULT ================= -->
+
+<div class="overlay" id="overlay">
+
+    <div class="result">
+
+        <h1 id="resultTitle">
+            🏆 Game Over!
+        </h1>
+
+        <div
+            class="winner"
+            id="winnerText"
+        ></div>
+
+        <div class="result-teams">
+
+            <div class="result-team">
+
+                <h3 id="finalTeamTitle1">🔴 Player 1</h3>
+
+                <div id="finalTeam1"></div>
+
+                <p>
+                    🪙
+                    <span id="finalCoins1"></span>
+                </p>
+
+            </div>
+
+            <div class="result-team">
+
+                <h3 id="finalTeamTitle2">🔵 Player 2</h3>
+
+                <div id="finalTeam2"></div>
+
+                <p>
+                    🪙
+                    <span id="finalCoins2"></span>
+                </p>
+
+            </div>
+
+        </div>
+
+        <button class="reset-button" type="button" onclick="location.reload()">
+            🔄 Play Again
+        </button>
+
+    </div>
+
+</div>
+
+<script>
+
+/* =========================================================
+   KANTO POKÉMON
+========================================================= */
+
+const allPokemon = [
+["Bulbasaur",1],["Ivysaur",2],["Venusaur",3],
+["Charmander",4],["Charmeleon",5],["Charizard",6],
+["Squirtle",7],["Wartortle",8],["Blastoise",9],
+["Caterpie",10],["Metapod",11],["Butterfree",12],
+["Weedle",13],["Kakuna",14],["Beedrill",15],
+["Pidgey",16],["Pidgeotto",17],["Pidgeot",18],
+["Rattata",19],["Raticate",20],["Spearow",21],
+["Fearow",22],["Ekans",23],["Arbok",24],
+["Pikachu",25],["Raichu",26],["Sandshrew",27],
+["Sandslash",28],["Nidoran♀",29],["Nidorina",30],
+["Nidoqueen",31],["Nidoran♂",32],["Nidorino",33],
+["Nidoking",34],["Clefairy",35],["Clefable",36],
+["Vulpix",37],["Ninetales",38],["Jigglypuff",39],
+["Wigglytuff",40],["Zubat",41],["Golbat",42],
+["Oddish",43],["Gloom",44],["Vileplume",45],
+["Paras",46],["Parasect",47],["Venonat",48],
+["Venomoth",49],["Diglett",50],["Dugtrio",51],
+["Meowth",52],["Persian",53],["Psyduck",54],
+["Golduck",55],["Mankey",56],["Primeape",57],
+["Growlithe",58],["Arcanine",59],["Poliwag",60],
+["Poliwhirl",61],["Poliwrath",62],["Abra",63],
+["Kadabra",64],["Alakazam",65],["Machop",66],
+["Machoke",67],["Machamp",68],["Bellsprout",69],
+["Weepinbell",70],["Victreebel",71],["Tentacool",72],
+["Tentacruel",73],["Geodude",74],["Graveler",75],
+["Golem",76],["Ponyta",77],["Rapidash",78],
+["Slowpoke",79],["Slowbro",80],["Magnemite",81],
+["Magneton",82],["Farfetch'd",83],["Doduo",84],
+["Dodrio",85],["Seel",86],["Dewgong",87],
+["Grimer",88],["Muk",89],["Shellder",90],
+["Cloyster",91],["Gastly",92],["Haunter",93],
+["Gengar",94],["Onix",95],["Drowzee",96],
+["Hypno",97],["Krabby",98],["Kingler",99],
+["Voltorb",100],["Electrode",101],["Exeggcute",102],
+["Exeggutor",103],["Cubone",104],["Marowak",105],
+["Hitmonlee",106],["Hitmonchan",107],["Lickitung",108],
+["Koffing",109],["Weezing",110],["Rhyhorn",111],
+["Rhydon",112],["Chansey",113],["Tangela",114],
+["Kangaskhan",115],["Horsea",116],["Seadra",117],
+["Goldeen",118],["Seaking",119],["Staryu",120],
+["Starmie",121],["Mr. Mime",122],["Scyther",123],
+["Jynx",124],["Electabuzz",125],["Magmar",126],
+["Pinsir",127],["Tauros",128],["Magikarp",129],
+["Gyarados",130],["Lapras",131],["Ditto",132],
+["Eevee",133],["Vaporeon",134],["Jolteon",135],
+["Flareon",136],["Porygon",137],["Omanyte",138],
+["Omastar",139],["Kabuto",140],["Kabutops",141],
+["Aerodactyl",142],["Snorlax",143],["Articuno",144],
+["Zapdos",145],["Moltres",146],["Dratini",147],
+["Dragonair",148],["Dragonite",149],["Mewtwo",150],
+["Mew",151]
+];
+
+/* =========================================================
+   POKÉMON TYPES
+========================================================= */
+
+const pokemonTypes = {
+1:["grass","poison"],2:["grass","poison"],3:["grass","poison"],
+4:["fire"],5:["fire"],6:["fire","flying"],
+7:["water"],8:["water"],9:["water"],
+10:["bug"],11:["bug"],12:["bug","flying"],
+13:["bug","poison"],14:["bug","poison"],15:["bug","poison"],
+16:["normal","flying"],17:["normal","flying"],18:["normal","flying"],
+19:["normal"],20:["normal"],21:["normal","flying"],22:["normal","flying"],
+23:["poison"],24:["poison"],25:["electric"],26:["electric"],
+27:["ground"],28:["ground"],29:["poison"],30:["poison"],
+31:["poison","ground"],32:["poison"],33:["poison"],34:["poison","ground"],
+35:["fairy"],36:["fairy"],37:["fire"],38:["fire"],
+39:["normal","fairy"],40:["normal","fairy"],41:["poison","flying"],42:["poison","flying"],
+43:["grass","poison"],44:["grass","poison"],45:["grass","poison"],46:["bug","grass"],47:["bug","grass"],48:["bug"],49:["bug","poison"],
+50:["ground"],51:["ground"],52:["normal"],53:["normal"],54:["water"],55:["water"],56:["fighting"],57:["fighting"],
+58:["fire"],59:["fire"],60:["water"],61:["water"],62:["water","fighting"],63:["psychic"],64:["psychic"],65:["psychic"],
+66:["fighting"],67:["fighting"],68:["fighting"],69:["grass","poison"],70:["grass","poison"],71:["grass","poison"],72:["water","poison"],73:["water","poison"],
+74:["rock","ground"],75:["rock","ground"],76:["rock","ground"],77:["fire"],78:["fire"],79:["water","psychic"],80:["water","psychic"],81:["electric","steel"],82:["electric","steel"],
+83:["normal","flying"],84:["normal","flying"],85:["normal","flying"],86:["water"],87:["water","ice"],88:["poison"],89:["poison"],90:["water"],91:["water","ice"],92:["ghost","poison"],93:["ghost","poison"],94:["ghost","poison"],95:["rock","ground"],96:["psychic"],97:["psychic"],98:["water"],99:["water"],100:["electric"],101:["electric"],102:["grass","psychic"],103:["grass","psychic"],104:["ground"],105:["ground"],106:["fighting"],107:["fighting"],108:["normal"],109:["poison"],110:["poison"],111:["ground","rock"],112:["ground","rock"],113:["normal"],114:["grass"],115:["normal"],116:["water"],117:["water"],118:["water"],119:["water"],120:["water"],121:["water","psychic"],122:["psychic","fairy"],123:["bug","flying"],124:["ice","psychic"],125:["electric"],126:["fire"],127:["bug"],128:["normal"],129:["water"],130:["water","flying"],131:["water","ice"],132:["normal"],133:["normal"],134:["water"],135:["electric"],136:["fire"],137:["normal"],138:["rock","water"],139:["rock","water"],140:["rock","water"],141:["rock","water"],142:["rock","flying"],143:["normal"],144:["ice","flying"],145:["electric","flying"],146:["fire","flying"],147:["dragon"],148:["dragon"],149:["dragon","flying"],150:["psychic"],151:["psychic"]
+};
+
+/* =========================================================
+   TYPE CHART
+========================================================= */
+
+const typeChart = {
+normal:{rock:.5,ghost:0,steel:.5},
+fire:{fire:.5,water:.5,grass:2,ice:2,bug:2,rock:.5,dragon:.5,steel:2},
+water:{fire:2,water:.5,grass:.5,ground:2,rock:2,dragon:.5},
+electric:{water:2,electric:.5,grass:.5,ground:0,flying:2,dragon:.5},
+grass:{fire:.5,water:2,grass:.5,poison:.5,ground:2,flying:.5,bug:.5,rock:2,dragon:.5,steel:.5},
+ice:{fire:.5,water:.5,grass:2,ice:.5,ground:2,flying:2,dragon:2,steel:.5},
+fighting:{normal:2,ice:2,rock:2,dark:2,steel:2,poison:.5,flying:.5,psychic:.5,bug:.5,fairy:.5,ghost:0},
+poison:{grass:2,poison:.5,ground:.5,rock:.5,ghost:.5,steel:0,fairy:2},
+ground:{fire:2,electric:2,grass:.5,poison:2,flying:0,bug:.5,rock:2,steel:2},
+flying:{electric:.5,grass:2,fighting:2,bug:2,rock:.5,steel:.5},
+psychic:{fighting:2,poison:2,psychic:.5,steel:.5,dark:0},
+bug:{fire:.5,grass:2,fighting:.5,poison:.5,flying:.5,psychic:2,ghost:.5,dark:2,steel:.5,fairy:.5},
+rock:{fire:2,ice:2,flying:2,bug:2,fighting:.5,ground:.5,steel:.5},
+ghost:{normal:0,psychic:2,ghost:2,dark:.5},
+dragon:{dragon:2,steel:.5,fairy:0},
+dark:{fighting:.5,psychic:2,ghost:2,dark:.5,fairy:.5},
+steel:{fire:.5,water:.5,electric:.5,ice:2,rock:2,fairy:2,steel:.5},
+fairy:{fire:.5,fighting:2,poison:.5,dragon:2,dark:2,steel:.5}
+};
+
+/* =========================================================
+   MOVE DATABASE (FALLBACK BY TYPE)
+========================================================= */
+
+const movePool = {
+normal:[["Tackle","normal",40],["Quick Attack","normal",40],["Body Slam","normal",70],["Slash","normal",70]],
+fire:[["Ember","fire",40],["Flame Burst","fire",70],["Flamethrower","fire",90],["Fire Blast","fire",110]],
+water:[["Water Gun","water",40],["Bubble Beam","water",65],["Surf","water",90],["Hydro Pump","water",110]],
+grass:[["Vine Whip","grass",45],["Razor Leaf","grass",55],["Energy Ball","grass",90],["Solar Beam","grass",110]],
+electric:[["Thunder Shock","electric",40],["Spark","electric",65],["Thunderbolt","electric",90],["Thunder","electric",110]],
+ice:[["Powder Snow","ice",40],["Ice Shard","ice",40],["Ice Beam","ice",90],["Blizzard","ice",110]],
+fighting:[["Karate Chop","fighting",50],["Brick Break","fighting",75],["Cross Chop","fighting",100],["Close Combat","fighting",120]],
+poison:[["Poison Sting","poison",15],["Acid","poison",40],["Sludge","poison",65],["Sludge Bomb","poison",90]],
+ground:[["Mud Shot","ground",55],["Bulldoze","ground",60],["Earth Power","ground",90],["Earthquake","ground",100]],
+flying:[["Gust","flying",40],["Wing Attack","flying",60],["Air Slash","flying",75],["Hurricane","flying",110]],
+psychic:[["Confusion","psychic",50],["Psybeam","psychic",65],["Psychic","psychic",90],["Psyshock","psychic",80]],
+bug:[["Bug Bite","bug",60],["Fury Cutter","bug",40],["X-Scissor","bug",80],["Bug Buzz","bug",90]],
+rock:[["Rock Throw","rock",50],["Rock Tomb","rock",60],["Rock Slide","rock",75],["Stone Edge","rock",100]],
+ghost:[["Lick","ghost",30],["Shadow Sneak","ghost",40],["Shadow Ball","ghost",80],["Phantom Force","ghost",90]],
+dragon:[["Dragon Breath","dragon",60],["Dragon Rage","dragon",70],["Dragon Claw","dragon",80],["Dragon Pulse","dragon",85]],
+dark:[["Bite","dark",60],["Feint Attack","dark",60],["Crunch","dark",80],["Night Slash","dark",70]],
+steel:[["Metal Claw","steel",50],["Iron Head","steel",80],["Flash Cannon","steel",80],["Steel Wing","steel",70]],
+fairy:[["Fairy Wind","fairy",40],["Draining Kiss","fairy",50],["Dazzling Gleam","fairy",80],["Moonblast","fairy",95]]
+};
+
+/* =========================================================
+   SEPARATE MOVESETS FOR ALL 151 POKÉMON
+========================================================= */
+
+const pokemonMoves = {
+1:[["Vine Whip","grass",45],["Razor Leaf","grass",55],["Sludge","poison",65],["Tackle","normal",40]],
+2:[["Razor Leaf","grass",55],["Vine Whip","grass",45],["Sludge","poison",65],["Body Slam","normal",70]],
+3:[["Energy Ball","grass",90],["Solar Beam","grass",110],["Sludge Bomb","poison",90],["Body Slam","normal",70]],
+4:[["Ember","fire",40],["Flame Burst","fire",70],["Scratch","normal",40],["Dragon Breath","dragon",60]],
+5:[["Flame Burst","fire",70],["Flamethrower","fire",90],["Slash","normal",70],["Dragon Claw","dragon",80]],
+6:[["Flamethrower","fire",90],["Fire Blast","fire",110],["Air Slash","flying",75],["Dragon Claw","dragon",80]],
+7:[["Water Gun","water",40],["Bubble Beam","water",65],["Bite","dark",60],["Rapid Spin","normal",50]],
+8:[["Bubble Beam","water",65],["Surf","water",90],["Ice Beam","ice",90],["Bite","dark",60]],
+9:[["Surf","water",90],["Hydro Pump","water",110],["Ice Beam","ice",90],["Flash Cannon","steel",80]],
+10:[["Bug Bite","bug",60],["Tackle","normal",40],["Struggle Bug","bug",50],["Quick Attack","normal",40]],
+11:[["Bug Bite","bug",60],["Iron Defense","steel",40],["Tackle","normal",40],["Fury Cutter","bug",40]],
+12:[["Bug Buzz","bug",90],["Air Slash","flying",75],["Psybeam","psychic",65],["Energy Ball","grass",90]],
+13:[["Poison Sting","poison",35],["Bug Bite","bug",60],["Fury Cutter","bug",40],["Tackle","normal",40]],
+14:[["Bug Bite","bug",60],["Poison Sting","poison",35],["Iron Head","steel",60],["Tackle","normal",40]],
+15:[["X-Scissor","bug",80],["Sludge Bomb","poison",90],["Twinneedle","bug",70],["Brick Break","fighting",75]],
+16:[["Gust","flying",40],["Quick Attack","normal",40],["Wing Attack","flying",60],["Air Slash","flying",75]],
+17:[["Wing Attack","flying",60],["Quick Attack","normal",40],["Air Slash","flying",75],["Swift","normal",60]],
+18:[["Air Slash","flying",75],["Hurricane","flying",110],["Quick Attack","normal",40],["Heat Wave","fire",95]],
+19:[["Quick Attack","normal",40],["Hyper Fang","normal",80],["Crunch","dark",80],["Sucker Punch","dark",70]],
+20:[["Hyper Fang","normal",80],["Double-Edge","normal",100],["Crunch","dark",80],["Sucker Punch","dark",70]],
+21:[["Peck","flying",35],["Fury Attack","normal",50],["Wing Attack","flying",60],["Drill Peck","flying",80]],
+22:[["Drill Peck","flying",80],["Double-Edge","normal",100],["Steel Wing","steel",70],["Hyper Beam","normal",110]],
+23:[["Poison Sting","poison",35],["Acid","poison",40],["Bite","dark",60],["Sludge","poison",65]],
+24:[["Sludge Bomb","poison",90],["Crunch","dark",80],["Thunder Fang","electric",65],["Fire Fang","fire",65]],
+25:[["Thunder Shock","electric",40],["Quick Attack","normal",40],["Thunderbolt","electric",90],["Thunder","electric",110]],
+26:[["Spark","electric",65],["Thunderbolt","electric",90],["Thunder","electric",110],["Brick Break","fighting",75]],
+27:[["Mud Shot","ground",55],["Sand Tomb","ground",45],["Slash","normal",70],["Rock Tomb","rock",60]],
+28:[["Earthquake","ground",100],["X-Scissor","bug",80],["Slash","normal",70],["Rock Slide","rock",75]],
+29:[["Poison Sting","poison",35],["Bite","dark",60],["Double Kick","fighting",60],["Sludge","poison",65]],
+30:[["Sludge","poison",65],["Bite","dark",60],["Double Kick","fighting",60],["Crunch","dark",80]],
+31:[["Earth Power","ground",90],["Sludge Bomb","poison",90],["Superpower","fighting",110],["Ice Beam","ice",90]],
+32:[["Poison Sting","poison",35],["Horn Attack","normal",65],["Double Kick","fighting",60],["Sludge","poison",65]],
+33:[["Horn Attack","normal",65],["Sludge","poison",65],["Double Kick","fighting",60],["Poison Jab","poison",80]],
+34:[["Earthquake","ground",100],["Sludge Bomb","poison",90],["Megahorn","bug",110],["Thunderbolt","electric",90]],
+35:[["Fairy Wind","fairy",40],["Draining Kiss","fairy",50],["Dazzling Gleam","fairy",80],["Wake-Up Slap","fighting",70]],
+36:[["Moonblast","fairy",95],["Dazzling Gleam","fairy",80],["Psychic","psychic",90],["Flamethrower","fire",90]],
+37:[["Ember","fire",40],["Flame Burst","fire",70],["Flamethrower","fire",90],["Extrasensory","psychic",80]],
+38:[["Flamethrower","fire",90],["Fire Blast","fire",110],["Extrasensory","psychic",80],["Shadow Ball","ghost",80]],
+39:[["Pound","normal",40],["Fairy Wind","fairy",40],["Dazzling Gleam","fairy",80],["Body Slam","normal",70]],
+40:[["Dazzling Gleam","fairy",80],["Double-Edge","normal",100],["Shadow Ball","ghost",80],["Hyper Voice","normal",90]],
+41:[["Wing Attack","flying",60],["Bite","dark",60],["Sludge","poison",65],["Air Cutter","flying",60]],
+42:[["Air Slash","flying",75],["Sludge Bomb","poison",90],["Crunch","dark",80],["Leech Life","bug",80]],
+43:[["Acid","poison",40],["Razor Leaf","grass",55],["Energy Ball","grass",90],["Sludge Bomb","poison",90]],
+44:[["Razor Leaf","grass",55],["Sludge Bomb","poison",90],["Energy Ball","grass",90],["Moonblast","fairy",95]],
+45:[["Solar Beam","grass",110],["Sludge Bomb","poison",90],["Petal Dance","grass",100],["Moonblast","fairy",95]],
+46:[["Bug Bite","bug",60],["Razor Leaf","grass",55],["Cross Poison","poison",70],["X-Scissor","bug",80]],
+47:[["X-Scissor","bug",80],["Energy Ball","grass",90],["Cross Poison","poison",70],["Leech Life","bug",80]],
+48:[["Psybeam","psychic",65],["Bug Bite","bug",60],["Sludge","poison",65],["Signal Beam","bug",75]],
+49:[["Bug Buzz","bug",90],["Psychic","psychic",90],["Sludge Bomb","poison",90],["Air Slash","flying",75]],
+50:[["Mud Shot","ground",55],["Bulldoze","ground",60],["Slash","normal",70],["Earthquake","ground",100]],
+51:[["Earthquake","ground",100],["Night Slash","dark",70],["Rock Slide","rock",75],["Sucker Punch","dark",70]],
+52:[["Scratch","normal",40],["Feint Attack","dark",60],["Night Slash","dark",70],["Play Rough","fairy",90]],
+53:[["Night Slash","dark",70],["Play Rough","fairy",90],["Power Gem","rock",80],["Hyper Voice","normal",90]],
+54:[["Water Gun","water",40],["Confusion","psychic",50],["Zen Headbutt","psychic",80],["Surf","water",90]],
+55:[["Surf","water",90],["Psychic","psychic",90],["Ice Beam","ice",90],["Hydro Pump","water",110]],
+56:[["Karate Chop","fighting",50],["Low Sweep","fighting",65],["Cross Chop","fighting",100],["Punishment","dark",70]],
+57:[["Close Combat","fighting",120],["Cross Chop","fighting",100],["Earthquake","ground",100],["Stone Edge","rock",100]],
+58:[["Flame Burst","fire",70],["Bite","dark",60],["Crunch","dark",80],["Flamethrower","fire",90]],
+59:[["Flare Blitz","fire",115],["Extreme Speed","normal",80],["Crunch","dark",80],["Wild Charge","electric",90]],
+60:[["Water Gun","water",40],["Bubble Beam","water",65],["Body Slam","normal",70],["Mud Shot","ground",55]],
+61:[["Bubble Beam","water",65],["Brick Break","fighting",75],["Body Slam","normal",70],["Surf","water",90]],
+62:[["Dynamic Punch","fighting",100],["Waterfall","water",80],["Ice Punch","ice",75],["Earthquake","ground",100]],
+63:[["Confusion","psychic",50],["Psybeam","psychic",65],["Swift","normal",60],["Psyshock","psychic",80]],
+64:[["Psybeam","psychic",65],["Psyshock","psychic",80],["Shadow Ball","ghost",80],["Energy Ball","grass",90]],
+65:[["Psychic","psychic",90],["Psyshock","psychic",80],["Focus Blast","fighting",110],["Shadow Ball","ghost",80]],
+66:[["Karate Chop","fighting",50],["Low Sweep","fighting",65],["Revenge","fighting",60],["Rock Tomb","rock",60]],
+67:[["Brick Break","fighting",75],["Cross Chop","fighting",100],["Knock Off","dark",65],["Rock Slide","rock",75]],
+68:[["Close Combat","fighting",120],["Dynamic Punch","fighting",100],["Stone Edge","rock",100],["Heavy Slam","steel",85]],
+69:[["Vine Whip","grass",45],["Acid","poison",40],["Razor Leaf","grass",55],["Sludge","poison",65]],
+70:[["Razor Leaf","grass",55],["Sludge","poison",65],["Leaf Tornado","grass",65],["Crunch","dark",80]],
+71:[["Power Whip","grass",115],["Sludge Bomb","poison",90],["Leaf Blade","grass",90],["Sucker Punch","dark",70]],
+72:[["Bubble Beam","water",65],["Acid","poison",40],["Sludge","poison",65],["Surf","water",90]],
+73:[["Surf","water",90],["Sludge Bomb","poison",90],["Ice Beam","ice",90],["Hex","ghost",65]],
+74:[["Rock Throw","rock",50],["Bulldoze","ground",60],["Smack Down","rock",50],["Earthquake","ground",100]],
+75:[["Rock Slide","rock",75],["Earthquake","ground",100],["Brick Break","fighting",75],["Explosion","normal",120]],
+76:[["Stone Edge","rock",100],["Earthquake","ground",100],["Heavy Slam","steel",85],["Fire Punch","fire",75]],
+77:[["Flame Burst","fire",70],["Stomp","normal",65],["Flamethrower","fire",90],["Bounce","flying",85]],
+78:[["Flare Blitz","fire",115],["Smart Strike","steel",70],["Megahorn","bug",110],["High Horsepower","ground",95]],
+79:[["Confusion","psychic",50],["Water Pulse","water",60],["Zen Headbutt","psychic",80],["Surf","water",90]],
+80:[["Scald","water",80],["Psychic","psychic",90],["Ice Beam","ice",90],["Flamethrower","fire",90]],
+81:[["Spark","electric",65],["Flash Cannon","steel",80],["Thunderbolt","electric",90],["Gyro Ball","steel",80]],
+82:[["Thunderbolt","electric",90],["Flash Cannon","steel",80],["Zap Cannon","electric",110],["Tri Attack","normal",80]],
+83:[["Air Cutter","flying",60],["Leaf Blade","grass",90],["Night Slash","dark",70],["Brave Bird","flying",115]],
+84:[["Pluck","flying",60],["Double Hit","normal",70],["Drill Peck","flying",80],["Knock Off","dark",65]],
+85:[["Brave Bird","flying",115],["Double-Edge","normal",100],["Jump Kick","fighting",100],["Knock Off","dark",65]],
+86:[["Aurora Beam","ice",65],["Aqua Tail","water",90],["Ice Shard","ice",40],["Headbutt","normal",70]],
+87:[["Ice Beam","ice",90],["Surf","water",90],["Aqua Jet","water",40],["Megahorn","bug",110]],
+88:[["Sludge","poison",65],["Mud Shot","ground",55],["Gunk Shot","poison",115],["Body Slam","normal",70]],
+89:[["Gunk Shot","poison",115],["Sludge Bomb","poison",90],["Dark Pulse","dark",80],["Fire Punch","fire",75]],
+90:[["Clamp","water",50],["Ice Shard","ice",40],["Razor Shell","water",75],["Icicle Spear","ice",65]],
+91:[["Icicle Crash","ice",85],["Razor Shell","water",75],["Ice Shard","ice",40],["Liquidation","water",85]],
+92:[["Shadow Sneak","ghost",40],["Lick","ghost",40],["Shadow Ball","ghost",80],["Sludge Bomb","poison",90]],
+93:[["Shadow Ball","ghost",80],["Sludge Bomb","poison",90],["Dark Pulse","dark",80],["Thunderbolt","electric",90]],
+94:[["Shadow Ball","ghost",80],["Sludge Bomb","poison",90],["Focus Blast","fighting",110],["Dazzling Gleam","fairy",80]],
+95:[["Rock Slide","rock",75],["Earthquake","ground",100],["Iron Tail","steel",100],["Dragon Breath","dragon",60]],
+96:[["Psybeam","psychic",65],["Headbutt","normal",70],["Zen Headbutt","psychic",80],["Shadow Ball","ghost",80]],
+97:[["Psychic","psychic",90],["Shadow Ball","ghost",80],["Dazzling Gleam","fairy",80],["Drain Punch","fighting",75]],
+98:[["Crabhammer","water",95],["Mud Shot","ground",55],["X-Scissor","bug",80],["Rock Slide","rock",75]],
+99:[["Crabhammer","water",95],["X-Scissor","bug",80],["Rock Slide","rock",75],["Superpower","fighting",110]],
+100:[["Spark","electric",65],["Gyro Ball","steel",80],["Thunderbolt","electric",90],["Explosion","normal",120]],
+101:[["Volt Switch","electric",70],["Thunderbolt","electric",90],["Foul Play","dark",90],["Hyper Beam","normal",110]],
+102:[["Bullet Seed","grass",60],["Confusion","psychic",50],["Uproar","normal",85],["Psyshock","psychic",80]],
+103:[["Leaf Storm","grass",115],["Psyshock","psychic",80],["Wood Hammer","grass",115],["Flamethrower","fire",90]],
+104:[["Bone Club","ground",65],["Bonemerang","ground",90],["Headbutt","normal",70],["Brick Break","fighting",75]],
+105:[["Bonemerang","ground",90],["Earthquake","ground",100],["Outrage","dragon",110],["Thunder Punch","electric",75]],
+106:[["High Jump Kick","fighting",115],["Blaze Kick","fire",85],["Sucker Punch","dark",70],["Stone Edge","rock",100]],
+107:[["Mach Punch","fighting",45],["Ice Punch","ice",75],["Thunder Punch","electric",75],["Close Combat","fighting",120]],
+108:[["Body Slam","normal",70],["Power Whip","grass",115],["Earthquake","ground",100],["Knock Off","dark",65]],
+109:[["Sludge","poison",65],["Smog","poison",40],["Gyro Ball","steel",80],["Assurance","dark",60]],
+110:[["Sludge Bomb","poison",90],["Flamethrower","fire",90],["Thunderbolt","electric",90],["Shadow Ball","ghost",80]],
+111:[["Stomp","normal",65],["Rock Slide","rock",75],["Earthquake","ground",100],["Megahorn","bug",110]],
+112:[["Earthquake","ground",100],["Stone Edge","rock",100],["Megahorn","bug",110],["Ice Punch","ice",75]],
+113:[["Double-Edge","normal",100],["Fire Blast","fire",110],["Ice Beam","ice",90],["Shadow Ball","ghost",80]],
+114:[["Vine Whip","grass",45],["Power Whip","grass",115],["Sludge Bomb","poison",90],["Earthquake","ground",100]],
+115:[["Double-Edge","normal",100],["Earthquake","ground",100],["Ice Punch","ice",75],["Sucker Punch","dark",70]],
+116:[["Bubble Beam","water",65],["Dragon Breath","dragon",60],["Flash Cannon","steel",80],["Signal Beam","bug",75]],
+117:[["Dragon Pulse","dragon",85],["Hydro Pump","water",110],["Flash Cannon","steel",80],["Ice Beam","ice",90]],
+118:[["Waterfall","water",80],["Horn Attack","normal",65],["Megahorn","bug",110],["Poison Jab","poison",80]],
+119:[["Waterfall","water",80],["Megahorn","bug",110],["Smart Strike","steel",70],["Flip Turn","water",60]],
+120:[["Swift","normal",60],["Water Pulse","water",60],["Psybeam","psychic",65],["Power Gem","rock",80]],
+121:[["Hydro Pump","water",110],["Psychic","psychic",90],["Thunderbolt","electric",90],["Ice Beam","ice",90]],
+122:[["Psyshock","psychic",80],["Dazzling Gleam","fairy",80],["Shadow Ball","ghost",80],["Thunderbolt","electric",90]],
+123:[["X-Scissor","bug",80],["Air Slash","flying",75],["Quick Attack","normal",40],["Night Slash","dark",70]],
+124:[["Ice Beam","ice",90],["Psychic","psychic",90],["Blizzard","ice",110],["Focus Blast","fighting",110]],
+125:[["Thunderbolt","electric",90],["Thunder Punch","electric",75],["Ice Punch","ice",75],["Cross Chop","fighting",100]],
+126:[["Flamethrower","fire",90],["Fire Punch","fire",75],["Thunder Punch","electric",75],["Earthquake","ground",100]],
+127:[["X-Scissor","bug",80],["Close Combat","fighting",120],["Stone Edge","rock",100],["Earthquake","ground",100]],
+128:[["Double-Edge","normal",100],["Earthquake","ground",100],["Stone Edge","rock",100],["Wild Charge","electric",90]],
+129:[["Splash","normal",15],["Tackle","normal",40],["Flail","normal",55],["Bounce","flying",85]],
+130:[["Waterfall","water",80],["Crunch","dark",80],["Earthquake","ground",100],["Ice Fang","ice",65]],
+131:[["Ice Beam","ice",90],["Surf","water",90],["Thunderbolt","electric",90],["Freeze-Dry","ice",70]],
+132:[["Transform","normal",60],["Copycat","normal",60],["Mimic","normal",65],["Tackle","normal",40]],
+133:[["Quick Attack","normal",40],["Bite","dark",60],["Swift","normal",60],["Double-Edge","normal",100]],
+134:[["Surf","water",90],["Ice Beam","ice",90],["Shadow Ball","ghost",80],["Aqua Ring","water",70]],
+135:[["Thunderbolt","electric",90],["Signal Beam","bug",75],["Shadow Ball","ghost",80],["Volt Switch","electric",70]],
+136:[["Flare Blitz","fire",115],["Superpower","fighting",110],["Quick Attack","normal",40],["Shadow Ball","ghost",80]],
+137:[["Tri Attack","normal",80],["Shadow Ball","ghost",80],["Ice Beam","ice",90],["Thunderbolt","electric",90]],
+138:[["Ancient Power","rock",60],["Surf","water",90],["Earth Power","ground",90],["Ice Beam","ice",90]],
+139:[["Hydro Pump","water",110],["Earth Power","ground",90],["Ice Beam","ice",90],["Ancient Power","rock",75]],
+140:[["Aqua Jet","water",40],["Rock Tomb","rock",60],["Leech Life","bug",80],["Slash","normal",70]],
+141:[["Liquidation","water",85],["Stone Edge","rock",100],["Night Slash","dark",70],["X-Scissor","bug",80]],
+142:[["Stone Edge","rock",100],["Brave Bird","flying",115],["Earthquake","ground",100],["Crunch","dark",80]],
+143:[["Body Slam","normal",70],["Earthquake","ground",100],["Heavy Slam","steel",85],["Fire Punch","fire",75]],
+144:[["Ice Beam","ice",90],["Hurricane","flying",110],["Freeze-Dry","ice",70],["Ancient Power","rock",75]],
+145:[["Thunderbolt","electric",90],["Hurricane","flying",110],["Heat Wave","fire",95],["Signal Beam","bug",75]],
+146:[["Flamethrower","fire",90],["Hurricane","flying",110],["Solar Beam","grass",110],["Ancient Power","rock",75]],
+147:[["Dragon Breath","dragon",60],["Aqua Tail","water",90],["Thunder Wave","electric",50],["Outrage","dragon",110]],
+148:[["Dragon Pulse","dragon",85],["Aqua Tail","water",90],["Thunderbolt","electric",90],["Ice Beam","ice",90]],
+149:[["Outrage","dragon",110],["Extreme Speed","normal",80],["Earthquake","ground",100],["Fire Punch","fire",75]],
+150:[["Psystrike","psychic",100],["Ice Beam","ice",90],["Thunderbolt","electric",90],["Aura Sphere","fighting",80]],
+151:[["Psychic","psychic",90],["Aura Sphere","fighting",80],["Flamethrower","fire",90],["Ice Beam","ice",90]]
+};
+
+/* =========================================================
+   UPLOADED BATTLE BACKGROUND IMAGES + FILENAME FALLBACKS
+========================================================= */
+
+const battleBackgrounds = [
+    {
+        src: "./Gemini_Generated_Image_2sfepe2sfepe2sfe.png",
+        fallbacks: ["Gemini_Generated_Image_2sfepe2sfepe2sfe.png", "Gemini_Generated_Image_2sfepe2sfepe2sfe.jpg"],
+        label: "🌿 MEADOW ARENA"
+    },
+    {
+        src: "./Gemini_Generated_Image_35hzkx35hzkx35hz.png",
+        fallbacks: ["Gemini_Generated_Image_35hzkx35hzkx35hz.png", "Gemini_Generated_Image_35hzkx35hzkx35hz.jpg"],
+        label: "🏖️ SUNSET COAST"
+    },
+    {
+        src: "./Gemini_Generated_Image_tp94lotp94lotp94.png",
+        fallbacks: ["Gemini_Generated_Image_tp94lotp94lotp94.png", "Gemini_Generated_Image_tp94lotp94lotp94.jpg"],
+        label: "🏜️ RED CANYON"
+    },
+    {
+        src: "./Gemini_Generated_Image_ftkpkpftkpkpftkp.png",
+        fallbacks: ["Gemini_Generated_Image_ftkpkpftkpkpftkp.png", "Gemini_Generated_Image_ftkpkpftkpkpftkp.jpg"],
+        label: "🌋 VOLCANIC CRATER"
+    },
+    {
+        src: "./Gemini_Generated_Image_br0ew8br0ew8br0e.png",
+        fallbacks: ["Gemini_Generated_Image_br0ew8br0ew8br0e.png", "Gemini_Generated_Image_br0ew8br0ew8br0e.jpg"],
+        label: "❄️ FROST CAVERN"
+    }
+];
+
+function handleBgError(imgEl, candidates) {
+    if (!imgEl) return;
+    const idx = Number(imgEl.dataset.fallbackIdx || 0);
+    if (idx < candidates.length) {
+        imgEl.dataset.fallbackIdx = String(idx + 1);
+        imgEl.src = "./" + candidates[idx];
+    } else {
+        imgEl.style.display = "none";
+    }
+}
+
+/* =========================================================
+   PLAYER NAMES & GAME VARIABLES
+========================================================= */
+
+let player1Name = "Player 1";
+let player2Name = "Player 2";
+let gameStarted = false;
+
+function getPlayerName(player) {
+    return player === 1 ? player1Name : player2Name;
+}
+
+function setTextSafe(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+}
+
+function applyPlayerNames() {
+    setTextSafe("player1Label", "🔴 " + player1Name);
+    setTextSafe("player2Label", "🔵 " + player2Name);
+    setTextSafe("player1TeamTitle", "🔴 " + player1Name + " Team");
+    setTextSafe("player2TeamTitle", "🔵 " + player2Name + " Team");
+    setTextSafe("battleName1", player1Name);
+    setTextSafe("battleName2", player2Name);
+    setTextSafe("finalTeamTitle1", "🔴 " + player1Name);
+    setTextSafe("finalTeamTitle2", "🔵 " + player2Name);
+}
+
+function confirmPlayerNames() {
+    const p1El = document.getElementById("player1NameInput");
+    const p2El = document.getElementById("player2NameInput");
+
+    player1Name = (p1El && p1El.value.trim()) || "Player 1";
+    player2Name = (p2El && p2El.value.trim()) || "Player 2";
+
+    applyPlayerNames();
+
+    const overlay = document.getElementById("nameOverlay");
+    if (overlay) {
+        overlay.classList.add("hidden");
+        overlay.style.display = "none";
+    }
+
+    if (!gameStarted) {
+        gameStarted = true;
+        beginGameFlow();
+    }
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    const startBtn = document.getElementById("startDraftButton");
+    if (startBtn) {
+        startBtn.addEventListener("click", confirmPlayerNames);
+    }
+
+    const p1Input = document.getElementById("player1NameInput");
+    const p2Input = document.getElementById("player2NameInput");
+
+    if (p1Input) {
+        p1Input.addEventListener("keydown", function(event) {
+            if (event.key === "Enter" && p2Input) {
+                event.preventDefault();
+                p2Input.focus();
+            }
+        });
+    }
+
+    if (p2Input) {
+        p2Input.addEventListener("keydown", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                confirmPlayerNames();
+            }
+        });
+    }
+});
+
+let player1Coins = 20;
+let player2Coins = 20;
+
+let player1Team = [];
+let player2Team = [];
+
+let selectedPokemon = [];
+
+let round = 0;
+
+let currentPokemon = null;
+let currentBid = 0;
+let highestBidder = null;
+
+let currentTurn = 1;
+let startingPlayer = 1;
+
+let turnTimer = 60;
+let timerInterval = null;
+
+let auctionLocked = false;
+let blindRound;
+
+/* =========================================================
+   BATTLE VARIABLES
+========================================================= */
+
+let battleTeam1 = [];
+let battleTeam2 = [];
+
+let activePokemon1 = null;
+let activePokemon2 = null;
+
+let battleTurn = null;
+let battleStarted = false;
+let battleWinner = null;
+
+/* =========================================================
+   COIN FLIP
+========================================================= */
+
+function flipCoin() {
+    startingPlayer = Math.random() < .5 ? 1 : 2;
+    currentTurn = startingPlayer;
+    showMessage("🪙 Coin flip: " + getPlayerName(startingPlayer) + " starts!");
+}
+
+/* =========================================================
+   CHOOSE SIX
+========================================================= */
+
+function choosePokemon() {
+    let pool = [...allPokemon];
+    pool.sort(() => Math.random() - .5);
+    selectedPokemon = pool.slice(0,6);
+}
+
+/* =========================================================
+   BLIND ROUND
+========================================================= */
+
+function chooseBlindRound() {
+    blindRound = Math.floor(Math.random() * 6) + 1;
+}
+
+/* =========================================================
+   ELIGIBILITY
+========================================================= */
+
+function hasCoins(player) {
+    return player === 1 ? player1Coins > 0 : player2Coins > 0;
+}
+
+function teamFull(player) {
+    return player === 1 ? player1Team.length >= 3 : player2Team.length >= 3;
+}
+
+function getNextEligiblePlayer(player) {
+    const other = player === 1 ? 2 : 1;
+    if (hasCoins(other) && !teamFull(other)) return other;
+    if (hasCoins(player) && !teamFull(player)) return player;
+    return null;
+}
+
+/* =========================================================
+   START AUCTION
+========================================================= */
+
+function startAuction() {
+    if (round >= 6) {
+        finishGame();
+        return;
+    }
+
+    round++;
+    currentPokemon = selectedPokemon[round - 1];
+    currentBid = 0;
+    highestBidder = null;
+    auctionLocked = false;
+    turnTimer = 60;
+
+    currentTurn = round === 1 ? startingPlayer : (currentTurn === 1 ? 2 : 1);
+    currentTurn = getNextEligiblePlayer(currentTurn);
+
+    if (currentTurn === null) {
+        autoDistributeNoCoins();
+        return;
+    }
+
+    setTextSafe("round", round);
+    showPokemon();
+    updateDisplay();
+
+    clearInterval(timerInterval);
+    timerInterval = setInterval(countdown, 1000);
+    updateAuctionControls();
+
+    setTimeout(() => {
+        const bidInput = document.getElementById("bidInput");
+        if (bidInput && !bidInput.disabled) bidInput.focus();
+    }, 100);
+}
+
+/* =========================================================
+   SHOW POKÉMON
+========================================================= */
+
+function showPokemon() {
+    const area = document.getElementById("pokemonArea");
+    if (!area || !currentPokemon) return;
+
+    if (round === blindRound) {
+        area.innerHTML = `
+            <div class="blind">❓</div>
+            <div class="pokemon-name">MYSTERY POKÉMON</div>
+        `;
+    } else {
+        area.innerHTML = `
+            <img
+                class="pokemon-img"
+                src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${currentPokemon[1]}.png"
+                alt="${currentPokemon[0]}"
+            >
+            <div class="pokemon-name">${currentPokemon[0]}</div>
+        `;
+    }
+}
+
+/* =========================================================
+   AUCTION CONTROLS
+========================================================= */
+
+function updateAuctionControls() {
+    const bidButton = document.getElementById("bidButton");
+    const passButton = document.getElementById("passButton");
+    const input = document.getElementById("bidInput");
+
+    const currentPlayerHasCoins =
+        currentTurn !== null &&
+        hasCoins(currentTurn) &&
+        !teamFull(currentTurn);
+
+    if (bidButton) bidButton.disabled = !currentPlayerHasCoins || auctionLocked;
+
+    const otherPlayer = currentTurn === 1 ? 2 : 1;
+    if (passButton) {
+        passButton.disabled =
+            !currentPlayerHasCoins ||
+            auctionLocked ||
+            (currentBid === 0 && hasCoins(otherPlayer));
+    }
+
+    if (input) input.disabled = !currentPlayerHasCoins || auctionLocked;
+}
+
+/* =========================================================
+   TIMER
+========================================================= */
+
+function countdown() {
+    if (auctionLocked) return;
+    turnTimer--;
+    setTextSafe("timer", turnTimer);
+    if (turnTimer <= 0) timeExpired();
+}
+
+/* =========================================================
+   BID
+========================================================= */
+
+function submitBid() {
+    if (auctionLocked) return;
+    if (currentTurn === null || !hasCoins(currentTurn) || teamFull(currentTurn)) return;
+
+    const input = document.getElementById("bidInput");
+    const amount = Number(input ? input.value : 0);
+    const coins = currentTurn === 1 ? player1Coins : player2Coins;
+
+    if (!amount || amount <= currentBid) {
+        showMessage("❌ Bid higher than 🪙 " + currentBid);
+        return;
+    }
+
+    if (amount > coins) {
+        showMessage("❌ You don't have enough coins.");
+        return;
+    }
+
+    currentBid = amount;
+    highestBidder = currentTurn;
+    turnTimer = 60;
+    setTextSafe("timer", turnTimer);
+    showMessage("💰 " + getPlayerName(currentTurn) + " bid 🪙 " + amount);
+
+    const otherPlayer = currentTurn === 1 ? 2 : 1;
+    if (hasCoins(otherPlayer) && !teamFull(otherPlayer)) {
+        currentTurn = otherPlayer;
+    } else {
+        endAuction(false);
+        return;
+    }
+
+    if (input) {
+        input.value = "";
+        input.focus();
+    }
+
+    updateDisplay();
+    updateAuctionControls();
+}
+
+/* =========================================================
+   PASS
+========================================================= */
+
+function passTurn() {
+    if (auctionLocked) return;
+    if (currentTurn === null || !hasCoins(currentTurn)) return;
+
+    const otherPlayer = currentTurn === 1 ? 2 : 1;
+    if (currentBid === 0 && !hasCoins(otherPlayer)) {
+        giveFreePokemon(otherPlayer);
+        return;
+    }
+
+    if (highestBidder !== null) {
+        endAuction(false);
+        return;
+    }
+
+    showMessage("❌ You must make the first bid.");
+}
+
+/* =========================================================
+   FREE POKÉMON
+========================================================= */
+
+function giveFreePokemon(player) {
+    if (auctionLocked) return;
+    auctionLocked = true;
+    clearInterval(timerInterval);
+    setTextSafe("timer", "—");
+
+    if (player === 1) player1Team.push(currentPokemon);
+    else player2Team.push(currentPokemon);
+
+    updateDisplay();
+
+    if (round === blindRound) {
+        const area = document.getElementById("pokemonArea");
+        if (area) {
+            area.innerHTML = `
+                <img
+                    class="pokemon-img"
+                    src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${currentPokemon[1]}.png"
+                >
+                <div class="pokemon-name">${currentPokemon[0]}</div>
+            `;
+        }
+        showMessage("🎁 " + getPlayerName(player) + " receives the Mystery Pokémon FREE!");
+    } else {
+        showMessage("🎁 " + getPlayerName(player) + " receives " + currentPokemon[0] + " FREE!");
+    }
+
+    setTimeout(nextAuction, 1800);
+}
+
+/* =========================================================
+   TIME EXPIRED
+========================================================= */
+
+function timeExpired() {
+    if (auctionLocked) return;
+
+    if (highestBidder !== null) {
+        showMessage("⏰ Time's up!");
+        endAuction(false);
+        return;
+    }
+
+    const otherPlayer = currentTurn === 1 ? 2 : 1;
+    if (!hasCoins(otherPlayer)) {
+        giveFreePokemon(otherPlayer);
+        return;
+    }
+
+    showMessage("⏰ No bid was made. Pokémon skipped.");
+    endAuction(true);
+}
+
+/* =========================================================
+   KEYBOARD
+========================================================= */
+
+const bidInputGlobal = document.getElementById("bidInput");
+if (bidInputGlobal) {
+    bidInputGlobal.addEventListener("keydown", function(event) {
+        if (event.key === "Enter") submitBid();
+    });
+}
+
+/* =========================================================
+   END AUCTION
+========================================================= */
+
+function endAuction(skipped = false) {
+    if (auctionLocked) return;
+    auctionLocked = true;
+    clearInterval(timerInterval);
+    setTextSafe("timer", "—");
+
+    if (skipped || highestBidder === null) {
+        setTimeout(nextAuction, 1200);
+        return;
+    }
+
+    const winner = highestBidder;
+    if (winner === 1) {
+        player1Coins -= currentBid;
+        player1Team.push(currentPokemon);
+    } else {
+        player2Coins -= currentBid;
+        player2Team.push(currentPokemon);
+    }
+
+    updateDisplay();
+
+    if (round === blindRound) {
+        showMessage("🎉 " + getPlayerName(winner) + " won the Mystery Pokémon: " + currentPokemon[0] + "!");
+        const area = document.getElementById("pokemonArea");
+        if (area) {
+            area.innerHTML = `
+                <img
+                    class="pokemon-img"
+                    src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${currentPokemon[1]}.png"
+                >
+                <div class="pokemon-name">${currentPokemon[0]}</div>
+            `;
+        }
+    } else {
+        showMessage("🏆 " + getPlayerName(winner) + " won " + currentPokemon[0] + " for 🪙 " + currentBid + "!");
+    }
+
+    setTimeout(nextAuction, 1800);
+}
+
+/* =========================================================
+   AUTO DISTRIBUTE
+========================================================= */
+
+function autoDistributeNoCoins() {
+    clearInterval(timerInterval);
+    auctionLocked = true;
+
+    while (round < 6 && (player1Team.length < 3 || player2Team.length < 3)) {
+        round++;
+        const pokemon = selectedPokemon[round - 1];
+        if (player1Team.length < 3) player1Team.push(pokemon);
+        else if (player2Team.length < 3) player2Team.push(pokemon);
+    }
+
+    updateDisplay();
+    finishGame();
+}
+
+/* =========================================================
+   NEXT AUCTION
+========================================================= */
+
+function nextAuction() {
+    if (player1Team.length === 3) {
+        while (player2Team.length < 3 && round < 6) {
+            round++;
+            player2Team.push(selectedPokemon[round - 1]);
+        }
+        updateDisplay();
+        finishGame();
+        return;
+    }
+
+    if (player2Team.length === 3) {
+        while (player1Team.length < 3 && round < 6) {
+            round++;
+            player1Team.push(selectedPokemon[round - 1]);
+        }
+        updateDisplay();
+        finishGame();
+        return;
+    }
+
+    if (round >= 6) {
+        finishGame();
+        return;
+    }
+
+    startAuction();
+}
+
+/* =========================================================
+   DISPLAY
+========================================================= */
+
+function updateDisplay() {
+    applyPlayerNames();
+    setTextSafe("player1Coins", player1Coins);
+    setTextSafe("player2Coins", player2Coins);
+    setTextSafe("player1Count", player1Team.length);
+    setTextSafe("player2Count", player2Team.length);
+    setTextSafe("currentBid", currentBid);
+    setTextSafe("highestBidder", highestBidder ? getPlayerName(highestBidder) : "Nobody");
+    setTextSafe(
+        "turn",
+        auctionLocked
+            ? "Auction finished"
+            : currentTurn
+                ? getPlayerName(currentTurn) + "'s turn"
+                : "No player can bid"
+    );
+
+    const p1Card = document.getElementById("player1Card");
+    const p2Card = document.getElementById("player2Card");
+    if (p1Card) p1Card.classList.toggle("active", currentTurn === 1 && !auctionLocked && hasCoins(1));
+    if (p2Card) p2Card.classList.toggle("active", currentTurn === 2 && !auctionLocked && hasCoins(2));
+
+    renderTeam("player1Team", player1Team, battleStarted ? battleTeam1 : null);
+    renderTeam("player2Team", player2Team, battleStarted ? battleTeam2 : null);
+
+    if (!auctionLocked) updateAuctionControls();
+}
+
+/* =========================================================
+   TEAM DISPLAY (WITH KNOCKED OUT RED HIGHLIGHT)
+========================================================= */
+
+function renderTeam(elementId, team, battleTeam = null) {
+    const container = document.getElementById(elementId);
+    if (!container) return;
+    container.innerHTML = "";
+
+    team.forEach((pokemon, index) => {
+        const battleMon = battleTeam && battleTeam[index];
+        const isKnockedOut = Boolean(battleMon && battleMon.hp <= 0);
+
+        container.innerHTML += `
+            <div class="team-pokemon ${isKnockedOut ? "knocked-out" : ""}">
+                <img
+                    src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon[1]}.png"
+                    alt="${pokemon[0]}"
+                >
+                <div>${isKnockedOut ? "KO • " + pokemon[0] : pokemon[0]}</div>
+            </div>
+        `;
+    });
+}
+
+/* =========================================================
+   AUCTION MESSAGE
+========================================================= */
+
+function showMessage(text) {
+    setTextSafe("message", text);
+}
+
+/* =========================================================
+   PREPARE BATTLE DATA
+========================================================= */
+
+function prepareBattlePokemon(pokemon) {
+    const id = pokemon[1];
+    const types = pokemonTypes[id] || ["normal"];
+
+    const SSS_TIER = [150, 149];
+    const SS_TIER = [130, 143, 6];
+    const S_TIER = [94, 59, 9, 3, 65, 131, 68, 112, 121, 135, 134, 38, 76];
+    const A_TIER = [31, 34, 36, 62, 80, 103, 115, 142, 144, 145, 146];
+
+    let basePower = 45 + ((id * 37) % 70);
+
+    const legendaryIds = [144, 145, 146, 150];
+    if (legendaryIds.includes(id)) basePower += 35;
+    if (A_TIER.includes(id)) basePower += 15;
+    if (S_TIER.includes(id)) basePower += 30;
+    if (SS_TIER.includes(id)) basePower += 45;
+    if (SSS_TIER.includes(id)) basePower += 60;
+
+    const weakIds = [
+        10,11,13,14,16,19,21,23,29,32,41,46,50,52,60,63,
+        66,69,74,77,84,86,98,100,102,104,116,118,129,133,
+        137,138,140,147
+    ];
+    if (weakIds.includes(id)) basePower -= 20;
+
+    basePower = Math.max(25, Math.min(180, basePower));
+
+    let hpMultiplier = 1;
+    let attackMultiplier = 1;
+    let defenseMultiplier = 1;
+    let speedBonus = 0;
+
+    if (S_TIER.includes(id)) {
+        hpMultiplier = 1.08; attackMultiplier = 1.10; defenseMultiplier = 1.06; speedBonus = 5;
+    }
+    if (SS_TIER.includes(id)) {
+        hpMultiplier = 1.18; attackMultiplier = 1.18; defenseMultiplier = 1.12; speedBonus = 10;
+    }
+    if (SSS_TIER.includes(id)) {
+        hpMultiplier = 1.30; attackMultiplier = 1.30; defenseMultiplier = 1.20; speedBonus = 15;
+    }
+
+    const maxHP = Math.round((80 + basePower * 1.7) * hpMultiplier);
+    const attack = Math.round((40 + basePower * .75) * attackMultiplier);
+    const defense = Math.round((40 + basePower * .60) * defenseMultiplier);
+    const speed = Math.round(40 + ((id * 17) % 80) + speedBonus);
+
+    let moves = pokemonMoves[id] ? pokemonMoves[id].map(m => [...m]) : [];
+
+    if (moves.length < 4) {
+        const firstType = types[0];
+        const secondType = types[1] || "normal";
+        if (movePool[firstType]) moves.push(...movePool[firstType]);
+        if (secondType !== firstType && movePool[secondType]) moves.push(...movePool[secondType]);
+        movePool.normal.forEach(move => moves.push(move));
+    }
+
+    const uniqueMoves = [];
+    moves.forEach(move => {
+        if (!uniqueMoves.some(existing => existing[0] === move[0])) {
+            uniqueMoves.push(move);
+        }
+    });
+
+    return {
+        name: pokemon[0],
+        id: id,
+        types: types,
+        maxHP: maxHP,
+        hp: maxHP,
+        attack: attack,
+        defense: defense,
+        speed: speed,
+        moves: uniqueMoves.slice(0,4)
+    };
+}
+
+/* =========================================================
+   RANDOM BATTLE BACKGROUND
+========================================================= */
+
+function applyRandomBattleBackground() {
+    const bgImg = document.getElementById("battleBgImg");
+    const battleTitle = document.getElementById("battleTitle");
+    if (!bgImg) return;
+
+    const chosen = battleBackgrounds[Math.floor(Math.random() * battleBackgrounds.length)];
+    bgImg.style.display = "block";
+    bgImg.dataset.fallbackIdx = "0";
+    bgImg.onerror = function() {
+        handleBgError(bgImg, chosen.fallbacks);
+    };
+    bgImg.src = chosen.src;
+    bgImg.alt = chosen.label;
+
+    if (battleTitle) battleTitle.textContent = "⚔️ BATTLE • " + chosen.label;
+}
+
+/* =========================================================
+   START BATTLE
+========================================================= */
+
+function startBattle() {
+    applyRandomBattleBackground();
+
+    const auctionArea = document.getElementById("auctionArea");
+    const battleArea = document.getElementById("battleArea");
+    if (auctionArea) auctionArea.style.display = "none";
+    if (battleArea) battleArea.style.display = "block";
+
+    battleTeam1 = player1Team.map(prepareBattlePokemon);
+    battleTeam2 = player2Team.map(prepareBattlePokemon);
+
+    activePokemon1 = null;
+    activePokemon2 = null;
+    battleStarted = true;
+    battleWinner = null;
+
+    updateDisplay();
+    updateBattleDisplay();
+    showBattleChoice(1);
+}
+
+/* =========================================================
+   CHOOSE ACTIVE POKÉMON (HIGHLIGHTS KNOCKED OUT IN RED)
+========================================================= */
+
+function showBattleChoice(player, switching = false) {
+    const choiceBox = document.getElementById("choiceBox");
+    const choiceTitle = document.getElementById("choiceTitle");
+    const choicePokemon = document.getElementById("choicePokemon");
+    if (!choiceBox || !choiceTitle || !choicePokemon) return;
+
+    choiceBox.style.display = "flex";
+    choiceTitle.textContent = switching
+        ? getPlayerName(player) + " — Switch Pokémon"
+        : getPlayerName(player) + " — Choose your Pokémon";
+
+    choicePokemon.innerHTML = "";
+
+    const team = player === 1 ? battleTeam1 : battleTeam2;
+    const active = player === 1 ? activePokemon1 : activePokemon2;
+
+    team.forEach((pokemon, index) => {
+        const isKO = pokemon.hp <= 0;
+        const isCurrentActive = switching && pokemon === active;
+
+        if (isKO) {
+            choicePokemon.innerHTML += `
+                <div class="choice-card knocked-out">
+                    <img
+                        src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon.id}.png"
+                        alt="${pokemon.name}"
+                    >
+                    <div>${pokemon.name}</div>
+                    <div class="ko-badge">☠️ KNOCKED OUT</div>
+                </div>
+            `;
+            return;
+        }
+
+        if (isCurrentActive) return;
+
+        choicePokemon.innerHTML += `
+            <div class="choice-card">
+                <img
+                    src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon.id}.png"
+                    alt="${pokemon.name}"
+                >
+                <div>${pokemon.name}</div>
+                <button type="button" onclick="selectActivePokemon(${player},${index},${switching})">
+                    ${switching ? "Switch" : "Choose"}
+                </button>
+            </div>
+        `;
+    });
+}
+
+/* =========================================================
+   SELECT ACTIVE
+========================================================= */
+
+function selectActivePokemon(player, index, switching = false) {
+    const team = player === 1 ? battleTeam1 : battleTeam2;
+    const pokemon = team[index];
+    if (!pokemon || pokemon.hp <= 0) return;
+
+    const oldActive = player === 1 ? activePokemon1 : activePokemon2;
+    if (switching && pokemon === oldActive) return;
+
+    if (player === 1) activePokemon1 = pokemon;
+    else activePokemon2 = pokemon;
+
+    const choiceBox = document.getElementById("choiceBox");
+    if (choiceBox) choiceBox.style.display = "none";
+
+    updateBattleDisplay();
+
+    if (switching) {
+        showBattleMessage("🔄 " + getPlayerName(player) + " switched to " + pokemon.name + "!");
+        battleTurn = player === 1 ? 2 : 1;
+        setTimeout(renderBattleControls, 900);
+        return;
+    }
+
+    if (activePokemon1 && activePokemon2) {
+        determineBattleTurn();
+    } else {
+        showBattleChoice(player === 1 ? 2 : 1);
+    }
+}
+
+/* =========================================================
+   DETERMINE FIRST TURN
+========================================================= */
+
+function determineBattleTurn() {
+    battleTurn = activePokemon1.speed >= activePokemon2.speed ? 1 : 2;
+    showBattleMessage("⚡ " + getPlayerName(battleTurn) + "'s " + getActivePokemon(battleTurn).name + " is faster!");
+    setTimeout(renderBattleControls, 900);
+}
+
+/* =========================================================
+   GET ACTIVE
+========================================================= */
+
+function getActivePokemon(player) {
+    return player === 1 ? activePokemon1 : activePokemon2;
+}
+
+/* =========================================================
+   BATTLE DISPLAY
+========================================================= */
+
+function updateBattleDisplay() {
+    updateBattlePlayer(1, activePokemon1);
+    updateBattlePlayer(2, activePokemon2);
+    renderTeam("player1Team", player1Team, battleStarted ? battleTeam1 : null);
+    renderTeam("player2Team", player2Team, battleStarted ? battleTeam2 : null);
+}
+
+function updateBattlePlayer(player, pokemon) {
+    if (!pokemon) return;
+
+    setTextSafe("battleName" + player, pokemon.name);
+
+    const typeEl = document.getElementById("battleType" + player);
+    if (typeEl) {
+        typeEl.innerHTML = pokemon.types.map(
+            type => `<span class="type-button type-${type}">${type.toUpperCase()}</span>`
+        ).join(" ");
+    }
+
+    const spriteEl = document.getElementById("battleSprite" + player);
+    if (spriteEl) {
+        spriteEl.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon.id}.png`;
+        spriteEl.alt = pokemon.name;
+    }
+
+    const percentage = Math.max(0, (pokemon.hp / pokemon.maxHP) * 100);
+    const hpFill = document.getElementById("hpFill" + player);
+    if (hpFill) {
+        hpFill.style.width = percentage + "%";
+        hpFill.style.background = percentage > 50 ? "#55b84a" : (percentage > 20 ? "#ffd43b" : "#ff6b6b");
+    }
+
+    setTextSafe("hpText" + player, Math.max(0, pokemon.hp) + " / " + pokemon.maxHP + " HP");
+}
+
+/* =========================================================
+   RENDER MOVES
+========================================================= */
+
+function renderBattleControls() {
+    const controls = document.getElementById("battleControls");
+    if (!controls) return;
+    controls.innerHTML = "";
+
+    if (!battleTurn) return;
+    const pokemon = getActivePokemon(battleTurn);
+    if (!pokemon || pokemon.hp <= 0) return;
+
+    showBattleMessage(getPlayerName(battleTurn) + "'s turn — choose a move!");
+
+    pokemon.moves.forEach((move, index) => {
+        controls.innerHTML += `
+            <button
+                type="button"
+                class="move-button type-${move[1]}"
+                onclick="useMove(${index})"
+            >
+                ${move[0]}
+                <br>
+                <small>${move[1].toUpperCase()} • ${move[2]}</small>
+            </button>
+        `;
+    });
+
+    controls.innerHTML += `
+        <button type="button" class="switch-button" onclick="openSwitchMenu()">
+            🔄 Switch
+        </button>
+    `;
+}
+
+/* =========================================================
+   USE MOVE
+========================================================= */
+
+function useMove(moveIndex) {
+    if (!battleTurn) return;
+
+    const attacker = getActivePokemon(battleTurn);
+    const defender = getActivePokemon(battleTurn === 1 ? 2 : 1);
+    if (!attacker || !defender || attacker.hp <= 0 || defender.hp <= 0) return;
+
+    const move = attacker.moves[moveIndex];
+    if (!move) return;
+
+    const controls = document.getElementById("battleControls");
+    if (controls) controls.innerHTML = "";
+
+    const moveName = move[0];
+    const moveType = move[1];
+    const movePower = move[2];
+
+    let effectiveness = 1;
+    defender.types.forEach(defenderType => {
+        if (typeChart[moveType] && typeChart[moveType][defenderType] !== undefined) {
+            effectiveness *= typeChart[moveType][defenderType];
+        }
+    });
+
+    let damage = Math.floor(((attacker.attack * movePower) / (defender.defense * .8)) / 2);
+    const randomFactor = .85 + Math.random() * .15;
+    damage = Math.max(1, Math.floor(damage * effectiveness * randomFactor));
+
+    defender.hp = Math.max(0, defender.hp - damage);
+    updateBattleDisplay();
+
+    let effectivenessMessage = "";
+    if (effectiveness === 0) effectivenessMessage = " It had no effect!";
+    else if (effectiveness >= 2) effectivenessMessage = " 💥 Super effective!";
+    else if (effectiveness < 1) effectivenessMessage = " Not very effective...";
+
+    showBattleMessage(
+        getPlayerName(battleTurn) + "'s " + attacker.name + " used " + moveName + "!<br>" +
+        damage + " damage!" + effectivenessMessage
+    );
+
+    setTimeout(() => {
+        if (defender.hp <= 0) {
+            handleFaint(battleTurn === 1 ? 2 : 1);
+            return;
+        }
+        battleTurn = battleTurn === 1 ? 2 : 1;
+        renderBattleControls();
+    }, 1200);
+}
+
+/* =========================================================
+   FAINT
+========================================================= */
+
+function handleFaint(player) {
+    const fainted = getActivePokemon(player);
+    updateBattleDisplay();
+    showBattleMessage("💥 " + fainted.name + " fainted!");
+
+    setTimeout(() => {
+        const team = player === 1 ? battleTeam1 : battleTeam2;
+        const alive = team.filter(pokemon => pokemon.hp > 0);
+
+        if (alive.length === 0) {
+            battleWinner = player === 1 ? 2 : 1;
+            finishBattle();
+            return;
+        }
+
+        showBattleChoice(player, false);
+    }, 1000);
+}
+
+/* =========================================================
+   SWITCH MENU
+========================================================= */
+
+function openSwitchMenu() {
+    const player = battleTurn;
+    const team = player === 1 ? battleTeam1 : battleTeam2;
+    const available = team.filter(pokemon => pokemon.hp > 0 && pokemon !== getActivePokemon(player));
+
+    if (available.length === 0) {
+        showBattleMessage("❌ No other Pokémon available!");
+        return;
+    }
+
+    showBattleChoice(player, true);
+}
+
+/* =========================================================
+   BATTLE MESSAGE
+========================================================= */
+
+function showBattleMessage(text) {
+    const el = document.getElementById("battleMessage");
+    if (el) el.innerHTML = text;
+}
+
+/* =========================================================
+   FINISH BATTLE
+========================================================= */
+
+function finishBattle() {
+    battleStarted = false;
+
+    const controls = document.getElementById("battleControls");
+    const choiceBox = document.getElementById("choiceBox");
+    if (controls) controls.innerHTML = "";
+    if (choiceBox) choiceBox.style.display = "none";
+
+    setTextSafe("resultTitle", "⚔️ Battle Complete!");
+    setTextSafe("winnerText", "🏆 " + getPlayerName(battleWinner) + " Wins the Battle!");
+    setTextSafe("finalCoins1", player1Coins);
+    setTextSafe("finalCoins2", player2Coins);
+
+    renderFinalTeam("finalTeam1", player1Team);
+    renderFinalTeam("finalTeam2", player2Team);
+
+    const overlay = document.getElementById("overlay");
+    if (overlay) overlay.style.display = "flex";
+}
+
+/* =========================================================
+   FINISH GAME
+========================================================= */
+
+function finishGame() {
+    clearInterval(timerInterval);
+    auctionLocked = true;
+    startBattle();
+}
+
+/* =========================================================
+   FINAL TEAMS
+========================================================= */
+
+function renderFinalTeam(elementId, team) {
+    const container = document.getElementById(elementId);
+    if (!container) return;
+    container.innerHTML = "";
+
+    team.forEach(pokemon => {
+        container.innerHTML += `
+            <img
+                src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon[1]}.png"
+                title="${pokemon[0]}"
+                alt="${pokemon[0]}"
+            >
+        `;
+    });
+}
+
+/* =========================================================
+   START GAME
+========================================================= */
+
+function beginGameFlow() {
+    choosePokemon();
+    chooseBlindRound();
+    flipCoin();
+    updateDisplay();
+
+    setTimeout(() => {
+        startAuction();
+    }, 1500);
+}
+
+applyPlayerNames();
+updateDisplay();
+
+</script>
+
+</body>
+</html>
